@@ -1,13 +1,13 @@
 var server = require('http').createServer();  
-var fs = require('fs');
 var io = require('socket.io')(server);
+var fs = require('fs');
 
 var fileWatchers = {};
 var socketsByFW = {};
 
 //on user connection
 io.on('connection', function(socket) {
-    
+
     //get user to watch
     const userToWatch = socket.handshake.query.userToWatch;
     if (userToWatch) {
