@@ -9,25 +9,32 @@ var socketsByFW = {};
 io.on('connection', function(socket) {
     
     //get user to watch
-    const pathName = socket.nsp.name;
-    console.log(pathName);
-    const userToWatch = null;
-    
-
-    //if no watcher registered
-    if (userToWatch && !fileWatchers[userToWatch]) {
+    const userToWatch = socket.handshake.query.userToWatch;
+    if (userToWatch) {
 
         //create
         let pathToWatch = './users_data/' + userToWatch + "/shout.json";
-        let watch = fs.watch(pathToWatch, { encoding: 'buffer' }, (eventType, filename) => {
-            var contents = fs.readFileSync('DATA', 'utf8');
-            socket.emit('newShout', contents);
-        });
 
-        //register...
-        fileWatchers[userToWatch] = watch;
-        if(socketsByFW[userToWatch] == undefined) socketsByFW[userToWatch] = 0;
-        socketsByFW[userToWatch] = socketsByFW[userToWatch] + 1;
+        //declare macro function for emit
+        let rfFunc = function () {
+            fs.readFile(pathToWatch, 'utf8', function (err, contents) {
+                socket.emit('newShout', contents);
+            }); 
+        };
+        rfFunc();
+
+        //if no watcher registered
+        if (!fileWatchers[userToWatch]) {
+            //watcher
+            let watch = fs.watch(pathToWatch, { encoding: 'buffer' }, () => {
+                rfFunc();
+            });
+
+            //register...
+            fileWatchers[userToWatch] = watch;
+            if(socketsByFW[userToWatch] == undefined) socketsByFW[userToWatch] = 0;
+            socketsByFW[userToWatch] = socketsByFW[userToWatch] + 1;
+        }
     }
 
     //on user disconnect
