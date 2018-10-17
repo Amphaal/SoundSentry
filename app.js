@@ -36,7 +36,7 @@ io.on('connect', function(socket) {
 
         //initial shout fetch
         fs.readFile(pathToWatch, 'utf8', function (err, contents) {
-            socket.emit(newShoutVerb, contents);
+            if (contents) socket.emit(newShoutVerb, contents);
         }); 
         socketsByFW[userToWatch] = socketsByFW[userToWatch] + 1;
         socket.join(userToWatch);
