@@ -14,12 +14,12 @@ io.on('connect', function(socket) {
     if (userToWatch) {
 
         console.log("new connection for user's shouts \"" + userToWatch + "\"!");
+        let pathToWatch = './users_data/' + userToWatch + "/shout.json";
 
         //if no watcher registered
         if (!fileWatchers[userToWatch]) {
                 
             //create if not exist
-            let pathToWatch = './users_data/' + userToWatch + "/shout.json";
             if(!fs.existsSync(pathToWatch)) {
                 fs.writeFileSync(pathToWatch, "{}");
             }
