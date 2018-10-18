@@ -6,14 +6,20 @@ var fileWatchers = {};
 var socketsByFW = {};
 var newShoutVerb = 'newShout';
 
+
+
 //on user connection
 io.on('connect', function(socket) {
 
     //get user to watch
     const userToWatch = socket.handshake.query.userToWatch;
+    function logForUser(log) {
+        console.log("\"" + userToWatch + "\: " + log);
+    }
+
     if (userToWatch) {
 
-        console.log("new connection for user's shouts \"" + userToWatch + "\"!");
+        logForUser("new connection for user's shouts");
         let pathToWatch = './users_data/' + userToWatch + "/shout.json";
 
         //if no watcher registered
@@ -21,6 +27,7 @@ io.on('connect', function(socket) {
                 
             //create if not exist
             if(!fs.existsSync(pathToWatch)) {
+                logForUser("create default shout file !");
                 fs.writeFileSync(pathToWatch, "{}");
             }
 
@@ -32,7 +39,7 @@ io.on('connect', function(socket) {
             });
 
             //register...
-            console.log("registering \"" + userToWatch + "\" shouts watcher !");
+            logForUser("registering shouts watcher !");
             fileWatchers[userToWatch] = watch;
             if(socketsByFW[userToWatch] == undefined) socketsByFW[userToWatch] = 0;
         }
@@ -44,14 +51,14 @@ io.on('connect', function(socket) {
         socketsByFW[userToWatch] = socketsByFW[userToWatch] + 1;
         socket.join(userToWatch);
 
-        console.log("Succesful registering for user's shouts \"" + userToWatch + "\". Total number of connections for this user : " + socketsByFW[userToWatch]);
+        logForUser("Succesful registering. Total number of connections for this user : " + socketsByFW[userToWatch]);
     }
 
     //on user disconnect
     socket.on('disconnect', function () {
 
         socketsByFW[userToWatch] = socketsByFW[userToWatch] - 1;
-        console.log("disconnect from user's shouts \"" + userToWatch + "\". Remaining connections for this user : " + socketsByFW[userToWatch]);
+        logForUser("disconnect. Remaining connections for this user : " + socketsByFW[userToWatch]);
 
         //close watcher
         // if(socketsByFW[userToWatch] <= 0) {
