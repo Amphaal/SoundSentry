@@ -21,15 +21,16 @@ io.on('connect', function(socket) {
 
         logForUser("new connection for user's shouts");
         let pathToWatch = './users_data/' + userToWatch + "/shout.json";
+        
+        //create if not exist
+        if(!fs.existsSync(pathToWatch)) {
+            logForUser("create default shout file !");
+            fs.writeFileSync(pathToWatch, "{}");
+            fs.chownSync(pathToWatch, 1000, 1000); //permit the php server to override it
+        }
 
         //if no watcher registered
         if (!fileWatchers[userToWatch]) {
-                
-            //create if not exist
-            if(!fs.existsSync(pathToWatch)) {
-                logForUser("create default shout file !");
-                fs.writeFileSync(pathToWatch, "{}");
-            }
 
             //watcher
             let watch = fs.watch(pathToWatch, { encoding: 'buffer' }, (eventType, filename) => {
