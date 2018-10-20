@@ -1,11 +1,15 @@
 var server = require('http').createServer();  
 var io = require('socket.io')(server);
 var fs = require('fs');
+var nsfw = require('nsfw');
 
 var fileWatchers = {};
 var socketsByFW = {};
 var newShoutVerb = 'newShout';
 
+///
+/// APP
+///
 
 
 //on user connection
@@ -14,13 +18,13 @@ io.on('connect', function(socket) {
     //get user to watch
     const userToWatch = socket.handshake.query.userToWatch;
     function logForUser(log) {
-        console.log("\"" + userToWatch + "\: " + log);
+        console.log("\"" + userToWatch + "\" : " + log);
     }
 
     if (userToWatch) {
 
         logForUser("new connection for user's shouts");
-        let pathToWatch = './users_data/' + userToWatch + "/shout.json";
+        let pathToWatch = '/srv/users_data/' + userToWatch + "/shout.json";
         
         //create if not exist
         if(!fs.existsSync(pathToWatch)) {
@@ -33,10 +37,14 @@ io.on('connect', function(socket) {
         if (!fileWatchers[userToWatch]) {
 
             //watcher
-            let watch = fs.watch(pathToWatch, { encoding: 'buffer' }, (eventType, filename) => {
+            let watch;
+            nsfw(pathToWatch, function(events) {
                 fs.readFile(pathToWatch, 'utf8', function (err, contents) {
                     io.to(userToWatch).emit(newShoutVerb, contents);
                 }); 
+            }).then(function(watcher) {
+                watch = watcher;
+                return watcher.start();
             });
 
             //register...
