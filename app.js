@@ -1,10 +1,11 @@
+var fs = require('fs');
+var nsfw = require('nsfw');
+
 var server = require('https').createServer({
     key: fs.readFileSync('server.key'),
     cert: fs.readFileSync('server.crt')
   });  
 var io = require('socket.io')(server);
-var fs = require('fs');
-var nsfw = require('nsfw');
 
 var fileWatchers = {};
 var socketsByFW = {};
