@@ -13,10 +13,16 @@ var io = require('socket.io')(server);
 /// APP
 ///
 
-//on user connection
-io.on('connect', function(socket) {
-    shout.handleSockets(socket);
-    //login.handleSockets(socket);
+//on user connections for shouts updates
+var shoutNsp = io.of('/shout');
+shoutNsp.on('connection', function(socket) {
+  shout.handleSockets(socket, shoutNsp);
+});
+
+//on user connections for login checks
+var loginNsp = io.of('/login');
+loginNsp.on('connection', function(socket) {
+  login.handleSockets(socket, loginNsp);
 });
 
 server.listen(3000);

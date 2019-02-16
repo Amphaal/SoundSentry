@@ -3,28 +3,22 @@ var nsfw = require('nsfw');
 
 var fileWatchers = {};
 var newShoutVerb = 'newShout';
+var shoutNsp = null;
 
 function getPathToWatch(userToWatch) {
     return '/srv/data/users/' + userToWatch + "/shout.json";
 }
 
-function getRoomLength(roomName) {
-    return io.sockets.adapter.rooms[roomName].length;
-}
+function handleSockets(socket, nsp) {
 
-function handleSockets(socket) {
-
+    //bind namespace for local usage
+    if (!shoutNsp) shoutNsp = nsp;
+    
     //get user to watch
     const userToWatch = socket.handshake.query.userToWatch;
 
     if (userToWatch) {
 
-        //loging factory function
-        function logForUser(log) {
-            console.log("\"" + userToWatch + "\" : " + log);
-        }
-
-        logForUser("new connection for user's shouts");
         let pathToWatch = getPathToWatch(userToWatch);
         
         //create if not exist
@@ -41,7 +35,7 @@ function handleSockets(socket) {
             let watch;
             nsfw(pathToWatch, function(events) {
                 fs.readFile(pathToWatch, 'utf8', function (err, contents) {
-                    io.to(userToWatch).emit(newShoutVerb, contents);
+                    shoutNsp.to(userToWatch).emit(newShoutVerb, contents);
                 }); 
             }).then(function(watcher) {
                 watch = watcher;
@@ -49,7 +43,6 @@ function handleSockets(socket) {
             });
 
             //register...
-            logForUser("registering shouts watcher !");
             fileWatchers[userToWatch] = watch;
         }
 
@@ -58,22 +51,7 @@ function handleSockets(socket) {
             if (contents) socket.emit(newShoutVerb, contents);
         }); 
         socket.join(userToWatch);
-
-        logForUser("Succesful registering. Total number of connections for this user : " + getRoomLength(userToWatch));
     }
-
-    //on user disconnect
-    socket.on('disconnect', function () {
-
-        logForUser("disconnect. Remaining connections for this user : " + getRoomLength(userToWatch));
-
-        //close watcher
-        // if(socketsByFW[userToWatch] <= 0) {
-        //     console.log("Closing \"" + userToWatch + "\" file watcher...");
-        //     fileWatchers[userToWatch].close(); 
-        //     fileWatchers[userToWatch] == null;
-        // }
-    });
 }
 
 module.exports = {
