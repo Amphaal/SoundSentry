@@ -1,3 +1,5 @@
+var fs = require('fs');
+
 var shout = require('./handlers/shout');
 //var login = require('./handlers/login');
 
