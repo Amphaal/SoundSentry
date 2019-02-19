@@ -8,16 +8,16 @@ var db = null;
 function checkIfLoginIsOk(username, password, callback) {
     
     //macro function for quickly outputing result
-    function updateResultsThenCb(error) {
+    function updateResultsThenCb(accomp, noError) {
         let results = {
             "isLoginOk" : false,
-            "error" : null
+            "accomp" : accomp
         };
-        if(error != null) {
-           results["error"] = error;
-        } else {
+        
+        if(noError) {
             results["isLoginOk"] = true;
-        }
+        } 
+
         callback(results);
     };
 
@@ -29,7 +29,7 @@ function checkIfLoginIsOk(username, password, callback) {
     if(db[username]["password"] != password) return updateResultsThenCb("pmiss");
     
     //OK, callback
-    return updateResultsThenCb();
+    return updateResultsThenCb(username, true);
 }
 
 //replace internal users db
