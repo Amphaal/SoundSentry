@@ -1,10 +1,9 @@
 var fs = require('fs');
 var nsfw = require('nsfw');
 
-var dbFileToWatch = "/srv/data/users/users.json";
+var dbFileToWatch = "/srv/data/users.json";
 var dbFileWatcher = null;
 var db = null;
-var loginNsp = null;
 
 function checkIfLoginIsOk(username, password, callback) {
     
@@ -23,32 +22,45 @@ function checkIfLoginIsOk(username, password, callback) {
     };
 
     //check if credentials are here
-    if(username == null || password == null) updateResultsThenCb("Credential data missing");
-    if(db == null) updateResultsThenCb("Empty users database");
-    if(db[username] == null) updateResultsThenCb("Username not found in database");
-    if(db[username]["password"] == null) updateResultsThenCb("Password for the user not found in database");
-    if(db[username]["password"] != password) updateResultsThenCb("Password missmatch");
+    if(username == null || password == null) return updateResultsThenCb("Credential data missing");
+    if(db == null) return updateResultsThenCb("Empty users database");
+    if(db[username] == null) return updateResultsThenCb("Username not found in database");
+    if(db[username]["password"] == null) return updateResultsThenCb("Password for the user not found in database");
+    if(db[username]["password"] != password) return updateResultsThenCb("Password missmatch");
     
     //OK, callback
-    updateResultsThenCb();
+    return updateResultsThenCb();
 }
 
-function updateDb(cb) {
-    //replace internal users db
-    fs.readFile(dbFileToWatch, 'utf8', function (err, contents) {
-        try {
-            db = JSON.parse(contents);
-            cb(null);
-        } catch(e) {
-            cb(e);
-        }
+//replace internal users db
+function updateDbCache() {
+    return new Promise(function(resolve, reject) {
+        fs.readFile(dbFileToWatch, 'utf8', function (err, contents) {
+            if (err) return reject(err);
+            try {
+                db = JSON.parse(contents);
+                return resolve();
+            } catch(e) {
+                return reject(e);
+            }
+        });
     });
 }
 
-function handleSockets(socket, nsp) {
+//
+function bindAndStartWatcher(watcher) {
+    dbFileWatcher = watcher;
+    return watcher.start();
+}
 
-    //bind namespace for local usage
-    if (!loginNsp) loginNsp = nsp;
+//tell the client that he could reask for credentials validation
+function shoutToClientsDatabaseUpdate(nsp) {
+    return function() {
+        nsp.emit("databaseUpdated"); 
+    }
+}
+
+function handleSockets(socket, nsp) {
 
     //create if not exist
     if(!fs.existsSync(dbFileToWatch)) {
@@ -59,22 +71,25 @@ function handleSockets(socket, nsp) {
     //define behavior on credentials check request
     socket.on("checkCredentials", function(username, password) {
         checkIfLoginIsOk(username, password, function(results) {
-            socket.send("credentialsChecked", results);
+            socket.emit("credentialsChecked", results);
         })
     });
 
     //if no watcher registered
     if (dbFileWatcher == null) {
-        nsfw(dbFileToWatch, function(events) {
-            //update local database copy
-            updateDb(function(error) {
-                //tell the client that he could reask for credentials validation
-                if(!error) nsp.emit("databaseUpdated");
-            });
-        }).then(function(watcher) {
-            dbFileWatcher = watcher;
-            return watcher.start();
-        });
+
+        //update cache
+        updateDbCache().then(function() {
+            
+            //on succeed, start listener
+            nsfw(dbFileToWatch, function(events) {
+                
+                //update cache then shout
+                updateDbCache().then(shoutToClientsDatabaseUpdate(nsp));
+
+            }).then(bindAndStartWatcher);
+
+        })
     }
 
 }
