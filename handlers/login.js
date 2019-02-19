@@ -22,11 +22,11 @@ function checkIfLoginIsOk(username, password, callback) {
     };
 
     //check if credentials are here
-    if(username == null || password == null) return updateResultsThenCb("Credential data missing");
-    if(db == null) return updateResultsThenCb("Empty users database");
-    if(db[username] == null) return updateResultsThenCb("Username not found in database");
-    if(db[username]["password"] == null) return updateResultsThenCb("Password for the user not found in database");
-    if(db[username]["password"] != password) return updateResultsThenCb("Password missmatch");
+    if(username == null || password == null) return updateResultsThenCb("cdm");
+    if(db == null) return updateResultsThenCb("eud");
+    if(db[username] == null) return updateResultsThenCb("unfid");
+    if(db[username]["password"] == null) return updateResultsThenCb("nopass");
+    if(db[username]["password"] != password) return updateResultsThenCb("pmiss");
     
     //OK, callback
     return updateResultsThenCb();
