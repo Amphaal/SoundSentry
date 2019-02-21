@@ -6,8 +6,6 @@ var dbFileWatcher = null;
 var db = null;
 
 function checkIfLoginIsOk(username, password, callback) {
-    
-    username = 
 
     //macro function for quickly outputing result
     function updateResultsThenCb(accomp, noError) {
