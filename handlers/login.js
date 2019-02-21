@@ -7,6 +7,8 @@ var db = null;
 
 function checkIfLoginIsOk(username, password, callback) {
     
+    username = 
+
     //macro function for quickly outputing result
     function updateResultsThenCb(accomp, noError) {
         let results = {
@@ -24,6 +26,9 @@ function checkIfLoginIsOk(username, password, callback) {
     //check if credentials are here
     if(username == null || password == null) return updateResultsThenCb("cdm");
     if(db == null) return updateResultsThenCb("eud");
+    
+    username = String(username).toLowerCase();
+    
     if(db[username] == null) return updateResultsThenCb("unfid");
     if(db[username]["password"] == null) return updateResultsThenCb("nopass");
     if(db[username]["password"] != password) return updateResultsThenCb("pmiss");
