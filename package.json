@@ -5,8 +5,5 @@
       "debug": "nodemon --watch ./dist --inspect=0.0.0.0:9229 --nolazy ./dist/app.js",
       "start": "node ./dist/app.js"
     },
-    "devDependencies": {
-      "nodemon": "^1.11.0"
-    },
     "main": "./dist/app.js"
   }
