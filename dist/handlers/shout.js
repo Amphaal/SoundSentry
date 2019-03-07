@@ -39,17 +39,13 @@ function handleSockets(socket, nsp) {
         //if no watcher registered
         if (!fileWatchers[userToWatch]) {
 
-            //watcher
-            let watch;
-            nsfw(pathToWatch, function(events) {
+            //register watcher..
+            fileWatchers[userToWatch] = nsfw(pathToWatch, function(events) {
                 sendUserShoutTo(pathToWatch, shoutNsp.to(userToWatch));
             }).then(function(watcher) {
-                watch = watcher;
                 return watcher.start();
             });
 
-            //register...
-            fileWatchers[userToWatch] = watch;
         }
 
         //initial shout fetch
