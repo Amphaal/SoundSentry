@@ -1,7 +1,8 @@
-var fs = require('fs');
-var nsfw = require('nsfw');
+import { readFile, existsSync, writeFileSync, chownSync } from 'fs';
+import Watcher from 'watcher';
+import { SoundVitrineDatabaseFolderPath } from '../_const.js';
 
-var dbFileToWatch = "/srv/data/users.json";
+var dbFileToWatch = SoundVitrineDatabaseFolderPath + "/users.json";
 var dbFileWatcher = null;
 var db = null;
 
@@ -38,7 +39,7 @@ function checkIfLoginIsOk(username, password, callback) {
 //replace internal users db
 function updateDbCache() {
     return new Promise(function(resolve, reject) {
-        fs.readFile(dbFileToWatch, 'utf8', function (err, contents) {
+        readFile(dbFileToWatch, 'utf8', function (err, contents) {
             if (err) return reject(err);
             try {
                 db = JSON.parse(contents);
@@ -50,12 +51,6 @@ function updateDbCache() {
     });
 }
 
-//
-function bindAndStartWatcher(watcher) {
-    dbFileWatcher = watcher;
-    return watcher.start();
-}
-
 //tell the client that he could reask for credentials validation
 function shoutToClientsDatabaseUpdate(nsp) {
     return function() {
@@ -63,12 +58,12 @@ function shoutToClientsDatabaseUpdate(nsp) {
     }
 }
 
-function handleSockets(socket, nsp) {
+export function handleSockets(socket, nsp) {
 
     //create if not exist
-    if(!fs.existsSync(dbFileToWatch)) {
-        fs.writeFileSync(dbFileToWatch, "[]");
-        fs.chownSync(dbFileToWatch, 1000, 1000); //permit the php server to override it
+    if(!existsSync(dbFileToWatch)) {
+        writeFileSync(dbFileToWatch, "[]");
+        chownSync(dbFileToWatch, 1000, 1000); //permit the php server to override it
     }
 
     //define behavior on credentials check request
@@ -85,18 +80,15 @@ function handleSockets(socket, nsp) {
         updateDbCache().then(function() {
             
             //on succeed, start listener
-            nsfw(dbFileToWatch, function(events) {
+            dbFileWatcher = new Watcher(dbFileToWatch);
+            dbFileWatcher.on("all", function(_) {
                 
                 //update cache then shout
                 updateDbCache().then(shoutToClientsDatabaseUpdate(nsp));
 
-            }).then(bindAndStartWatcher);
+            });
 
         })
     }
 
 }
-
-module.exports = {
-    handleSockets : handleSockets
-};

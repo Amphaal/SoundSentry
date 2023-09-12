@@ -1,23 +1,24 @@
-var fs = require('fs');
-var nsfw = require('nsfw');
+import { readFile, existsSync, writeFileSync, chownSync } from 'fs';
+import Watcher from 'watcher';
+import { SoundVitrineDatabaseFolderPath } from '../_const.js';
 
 var fileWatchers = {};
 var newShoutVerb = 'newShout';
 var shoutNsp = null;
 
 function getPathToWatch(userToWatch) {
-    return '/srv/data/users/' + userToWatch + "/shout.json";
+    return SoundVitrineDatabaseFolderPath + '/users/' + userToWatch + "/shout.json";
 }
 
 function sendUserShoutTo(pathToWatch, target) {
-    fs.readFile(pathToWatch, 'utf8', function (err, contents) {
+    readFile(pathToWatch, 'utf8', function (err, contents) {
         if (contents) {
             target.emit(newShoutVerb, contents);
         }
     }); 
 }
 
-function handleSockets(socket, nsp) {
+export function handleSockets(socket, nsp) {
 
     //bind namespace for local usage
     if (!shoutNsp) shoutNsp = nsp;
@@ -30,22 +31,21 @@ function handleSockets(socket, nsp) {
         let pathToWatch = getPathToWatch(userToWatch);
         
         //create if not exist
-        if(!fs.existsSync(pathToWatch)) {
+        if(!existsSync(pathToWatch)) {
             logForUser("create default shout file !");
-            fs.writeFileSync(pathToWatch, "{}");
-            fs.chownSync(pathToWatch, 1000, 1000); //permit the php server to override it
+            writeFileSync(pathToWatch, "{}");
+            chownSync(pathToWatch, 1000, 1000); //permit the php server to override it
         }
 
         //if no watcher registered
         if (!fileWatchers[userToWatch]) {
 
             //register watcher..
-            fileWatchers[userToWatch] = nsfw(pathToWatch, function(events) {
+            var watcher = new Watcher(pathToWatch);
+            fileWatchers[userToWatch] = watcher;
+            watcher.on("all", function(_) {
                 sendUserShoutTo(pathToWatch, shoutNsp.to(userToWatch));
-            }).then(function(watcher) {
-                return watcher.start();
             });
-
         }
 
         //initial shout fetch
@@ -53,7 +53,3 @@ function handleSockets(socket, nsp) {
         socket.join(userToWatch);
     }
 }
-
-module.exports = {
-    handleSockets : handleSockets
-};

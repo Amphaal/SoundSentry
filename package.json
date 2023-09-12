@@ -1,9 +1,21 @@
 {
-    "name": "server",
-    "version": "0.0.0",
+    "name": "soundsentry",
+    "type": "module",
+    "version": "0.0.2",
+    "private": true,
+    "license": "UNLICENSED",
+    "dependencies": {
+      "socket.io": "^4.7.2",
+      "watcher": "^2.3.0"
+    },
+    "devDependencies": {
+      "nodemon": "^3.0.1"
+    },
+    "engines": {
+      "node": ">=18"
+    },
     "scripts": {
       "debug": "nodemon --watch ./dist --inspect=0.0.0.0:9229 --nolazy ./dist/app.js",
       "start": "node ./dist/app.js"
-    },
-    "main": "./dist/app.js"
+    }
   }

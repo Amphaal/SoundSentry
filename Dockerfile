@@ -3,8 +3,6 @@ ARG APP_DIRECTORY=/home/node/app
 
 # ---- Base Node ----
 FROM node:lts-slim AS base
-  # tell we are building code for production
-  ENV NODE_ENV production
   # install PNPM (https://github.com/pnpm/pnpm/issues/4495)
   ENV PNPM_HOME="/root/.local/share/pnpm"
   ENV PATH="${PATH}:${PNPM_HOME}"
