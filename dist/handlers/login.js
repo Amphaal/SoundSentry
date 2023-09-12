@@ -1,8 +1,8 @@
 import { readFile, existsSync, writeFileSync, chownSync } from 'fs';
 import Watcher from 'watcher';
-import { SoundVitrineDatabaseFolderPath } from '../_const.js';
+import { SoundVitrineDatabaseFolderPath, ExpectedShoutFileNameOnUserProfile } from '../_const.js';
 
-var dbFileToWatch = SoundVitrineDatabaseFolderPath + "/users.json";
+var dbFileToWatch = SoundVitrineDatabaseFolderPath + "/" + ExpectedShoutFileNameOnUserProfile;
 var dbFileWatcher = null;
 var db = null;
 

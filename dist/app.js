@@ -4,7 +4,7 @@ import httpServer from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { handleSockets as handleShoutSockets } from './handlers/shout.js';
 import { handleSockets as handleLoginSockets } from './handlers/login.js';
-import { SoundVitrineDatabaseFolderPath } from '../_const.js';
+import { SoundVitrineDatabaseFolderPath, ListeningPort } from '../_const.js';
 
 var env = process.env.NODE_ENV || 'development';
 
@@ -50,7 +50,6 @@ loginNsp.on('connection', function(socket) {
   handleLoginSockets(socket, loginNsp);
 });
 
-const port = 3000;
-webServ.listen(port);
+webServ.listen(ListeningPort);
 
-console.log("Sucessfully ran on port " + port + ". Awaiting connections...");
+console.log("Sucessfully ran on port " + ListeningPort + ". Awaiting connections...");
