@@ -1,13 +1,13 @@
 import { readFile, existsSync, writeFileSync, chownSync } from 'fs';
 import Watcher from 'watcher';
-import { SoundVitrineDatabaseFolderPath, ExpectedShoutFileNameOnProfile } from '../_const.js';
+import { SoundVitrineDatabaseFolderPath, ExpectedShoutFileNameOnUserProfile } from '../_const.js';
 
 var fileWatchers = {};
 var newShoutVerb = 'newShout';
 var shoutNsp = null;
 
 function getPathToWatch(userToWatch) {
-    return SoundVitrineDatabaseFolderPath + '/users/' + userToWatch + "/" + ExpectedShoutFileNameOnProfile;
+    return SoundVitrineDatabaseFolderPath + '/users/' + userToWatch + "/" + ExpectedShoutFileNameOnUserProfile;
 }
 
 function sendUserShoutTo(pathToWatch, target) {

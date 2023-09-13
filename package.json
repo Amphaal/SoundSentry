@@ -1,11 +1,11 @@
 {
     "name": "soundsentry",
     "type": "module",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "private": true,
     "license": "UNLICENSED",
     "dependencies": {
-      "socket.io": "^4.7.2",
+      "ws": "^8.14.1",
       "watcher": "^2.3.0"
     },
     "devDependencies": {
