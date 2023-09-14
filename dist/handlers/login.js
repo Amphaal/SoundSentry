@@ -146,11 +146,11 @@ function shoutToAffectedClientsThatDatabaseUpdated(allSockets) {
 
         console.log(socketUsername, ": please login again !");
 
-        socket.username = undefined;
-        socket.password_hash = undefined;
+        connectedSocket.username = undefined;
+        connectedSocket.password_hash = undefined;
 
-        delete socket.username;
-        delete socket.password_hash;
+        delete connectedSocket.username;
+        delete connectedSocket.password_hash;
 
         //
         // tells the socket that database changed
