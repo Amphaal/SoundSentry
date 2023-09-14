@@ -1,4 +1,4 @@
-import { readFileSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync } from 'fs';
 import httpsServer from 'https';
 import httpServer from 'http';
 import { WebSocketServer } from 'ws';
@@ -9,6 +9,11 @@ import { SoundVitrineDatabaseFolderPath, ListeningPort } from './_const.js';
 //
 // Front Web Server setup
 //
+
+//
+if (!existsSync(SoundVitrineDatabaseFolderPath)) {
+  mkdirSync(SoundVitrineDatabaseFolderPath, { recursive: true });
+}
 
 var env = process.env.NODE_ENV || 'development';
 
@@ -50,28 +55,52 @@ webServ.on('upgrade', function upgrade(request, socket, head) {
   //
   socket.on('error', onSocketError);
 
+  // url must be provided
+  if (request.url == null) {
+    socket.destroy();
+    return;
+  }
+
+  const [username, verb] = request.url.split('/').filter(Boolean);
+  
+  //get user to watch
+  if (username == null || verb == null) {
+    socket.destroy();
+    return;
+  }
+
+  //
   wss.handleUpgrade(request, socket, head, function done(ws) {
+    //
     socket.removeListener('error', onSocketError);
 
     // says it connected anyway...
     wss.emit('connection', ws, request);
     
-    const login_middleware = login_setupOnSocketReady(ws, wss.clients);
-    const shout_middleware = shout_setupOnSocketReady(ws, wss.clients);
+    //
+    let middlewares = [];
+    switch (verb) {
+      case "shout": {
+        middlewares.push(shout_setupOnSocketReady(ws, wss.clients, username));
+      }
 
+      case "login": {
+        middlewares.push(login_setupOnSocketReady(ws, wss.clients, username));
+      }
+    }
+
+    //
     ws.on('message', function message(data) {
+      //
       const payloadAsJson = JSON.parse(data);
 
-      const middlewares = [
-        login_middleware,
-        shout_middleware
-      ];
-
+      //
       for(const middleware of middlewares) {
         const handled = middleware(payloadAsJson);
         if (handled) return;
       }
 
+      //
       console.warn('Client trying to use unconfigured command, with payload: ', payloadAsJson);
     });
   });

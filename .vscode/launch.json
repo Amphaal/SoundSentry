@@ -13,9 +13,10 @@
                 "<node_internals>/**"
             ],
             "env": {
-                "NODE_DEBUG": "engine,socket.io*" 
+                "NODE_DEBUG": "engine,socket.io*",
+                "DATA_FOLDER": "${workspaceFolder}/_data"
             },
-            "program": "${workspaceFolder}\\dist\\app.js"
+            "program": "${workspaceFolder}/dist/app.js"
         }
     ]
 }

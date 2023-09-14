@@ -1,8 +1,8 @@
-import { readFile, existsSync, writeFileSync, chownSync } from 'fs';
+import { readFile, existsSync, writeFileSync, chownSync, mkdirSync } from 'fs';
 import Watcher from 'watcher';
-import { SoundVitrineDatabaseFolderPath, ExpectedShoutFileNameOnUserProfile } from '../_const.js';
-import { getBoundUserProfile } from './_all.js';
+import { SoundVitrineDatabaseFolderPath, ExpectedShoutFileNameOnUserProfile, PHPOwnerUserID, PHPOwnerGroupID } from '../_const.js';
 import { WebSocket } from 'ws';
+import { dirname } from 'path';
 
 /**
  * key is username
@@ -37,12 +37,12 @@ function sendStoredShoutOfUserTo(pathToShoutFile, ofUser, sockets) {
         //
         for(const socket of sockets) {
             // TODO: might need to cleanup closed sockets in rooms
-            if (client.readyState !== WebSocket.OPEN) continue;
+            if (socket.readyState !== WebSocket.OPEN) continue;
 
             //
             socket.send(JSON.stringify({
                 id: "newShout",
-                r: ofUser
+                r: contents
             }));
         }
     }); 
@@ -52,10 +52,20 @@ function sendStoredShoutOfUserTo(pathToShoutFile, ofUser, sockets) {
  * If do not exist, create shout file 
  */
 function mayCreateShoutFile(shoutFileToWatch) {
+    //
     if(existsSync(shoutFileToWatch)) return;
-    console.log(userToWatch, ": create default shout file !");
+
+    //
+    console.log(shoutFileToWatch, ": create default shout file !");
+    
+    mkdirSync(dirname(shoutFileToWatch), { recursive: true });
     writeFileSync(shoutFileToWatch, "{}");
-    chownSync(shoutFileToWatch, 1000, 1000); //permit the php server to override it
+
+    try {
+        chownSync(shoutFileToWatch, PHPOwnerUserID, PHPOwnerGroupID); //permit the php server to override it
+    } catch {
+        console.warn("cannot update owner of file ", shoutFileToWatch, " to ", PHPOwnerUserID,":",PHPOwnerGroupID);
+    }
 }
 
 /** 
@@ -70,7 +80,7 @@ function mayRegisterShoutFileWatcher(userToWatch, shoutFileToWatch) {
     fileWatchers[userToWatch] = watcher;
 
     //
-    watcher.on("all", function(_) {
+    watcher.on("all", function(event, targetPath, targetPathNext) {
         sendStoredShoutOfUserTo(shoutFileToWatch, userToWatch, userRooms[userToWatch]);
     });
 }
@@ -79,16 +89,9 @@ function mayRegisterShoutFileWatcher(userToWatch, shoutFileToWatch) {
  * Essentially allow anonymous sockets from SoundVitrine, typically visitors of SoundVitrine, user profile
  * @param {WebSocket} freshSocket socket that just connected 
  * @param {WebSocket[]} allSockets all connected sockets 
+ * @param {string} username 
  */
-export function setupOnSocketReady(freshSocket, _) {
-
-    //get user to watch
-    const userToWatch = getBoundUserProfile(freshSocket);
-    if (userToWatch == null) {
-        console.warn('Socket cannot listen to shouts of ', freshSocket.url, ', url should end with username');
-        return;
-    }
-
+export function setupOnSocketReady(freshSocket, _, username) {
     //
     const shoutFileToWatch = getAssociatedShoutFilePath(userToWatch);
     

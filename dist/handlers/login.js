@@ -1,7 +1,6 @@
-import { readFile, existsSync, writeFileSync, chownSync } from 'fs';
+import { readFile, existsSync, writeFileSync, chownSync, readFileSync } from 'fs';
 import Watcher from 'watcher';
-import { SoundVitrineDatabaseFolderPath, ExpectedShoutFileNameOnUserProfile } from '../_const.js';
-import { getBoundUserProfile } from './_all.js';
+import { SoundVitrineDatabaseFolderPath, ExpectedUserDatabaseFileName, PHPOwnerUserID, PHPOwnerGroupID } from '../_const.js';
 import { WebSocket } from 'ws';
 import { createHash } from 'crypto';
 
@@ -9,7 +8,7 @@ import { createHash } from 'crypto';
 //
 //
 
-const dbFileToWatch = SoundVitrineDatabaseFolderPath + "/" + ExpectedShoutFileNameOnUserProfile;
+const dbFileToWatch = SoundVitrineDatabaseFolderPath + "/" + ExpectedUserDatabaseFileName;
 
 /**
  * can be null if unset
@@ -50,15 +49,14 @@ function produceAuthResult(accomp, hasNotFailed) {
  * @param {string} path path on which the socket registered. might contain username in first segment 
  * @param {id: ("checkCredentials"), r: string} auth_payload
  * @returns {id: ("credentialsChecked"), r: string}
+ * @param {string} username 
  */
-export function authenticateUser(socket, auth_payload) {
+export function authenticateUser(socket, auth_payload, username) {
     //
     const password = auth_payload.r;
 
     //
     const authResult = (() => {
-        //
-        const username = getBoundUserProfile(socket);
         if (username == null) {
             return produceAuthResult("cdm");
         }
@@ -73,18 +71,23 @@ export function authenticateUser(socket, auth_payload) {
         if(db[username]["password"] == null) return produceAuthResult("nopass");
         if(db[username]["password"] != password) return produceAuthResult("pmiss");
         
-        // OK
-        socket.username = username;
-        socket.password_hash = createHash('md5').update(password).digest('hex');
-
-        console.log(username, ": Successfully logged !");
-
         //
         return produceAuthResult(username, true);
     })();
     
+    //
+    //
+    //
+
     if (!authResult.isLoginOk) {
         console.log(username, ": Failed auth with code ", authResult.accomp);
+    } else {
+        // OK
+        socket.username = username;
+        socket.password_hash = createHash('md5').update(password).digest('hex');
+
+        //
+        console.log(username, ": Successfully logged !");
     }
 
     //
@@ -96,23 +99,11 @@ export function authenticateUser(socket, auth_payload) {
 
 /** Refreshes local copy of database from expected file */
 function updateDbCache() {
-    return new Promise(function(resolve, reject) {
-        readFile(dbFileToWatch, 'utf8', function (err, contents) {
-            //
-            if (err) return reject(err);
-
-            //
-            try {
-                db = JSON.parse(contents);
-
-                console.log("Users database changed !");
-
-                return resolve();
-            } catch(e) {
-                return reject(e);
-            }
-        });
-    });
+    db = JSON.parse(
+        readFileSync(dbFileToWatch, {
+            encoding: 'utf-8'
+        })
+    );
 }
 
 /**
@@ -179,38 +170,46 @@ function shoutToAffectedClientsThatDatabaseUpdated(allSockets) {
  * and along side with ping / pong capabilities of WebServices, tell if the server-side services are up
  * @param {WebSocket} freshSocket socket that just connected 
  * @param {WebSocket[]} allSockets all connected sockets 
+ * @param {string} username 
  * @returns {WebSocketMiddleware}
  */
-export function setupOnSocketReady(freshSocket, allSockets) {
+export function setupOnSocketReady(freshSocket, allSockets, username) {
     // Maintenance: ensure recreation of database, even if deleted
     if(!existsSync(dbFileToWatch)) {
         writeFileSync(dbFileToWatch, "{}");
-        chownSync(dbFileToWatch, 1000, 1000); // permit the php server to override it
+        try {
+            chownSync(dbFileToWatch, PHPOwnerUserID, PHPOwnerGroupID); // permit the php server to override it
+        } catch {
+            console.warn("cannot update owner of file ", dbFileToWatch, " to ", PHPOwnerUserID,":",PHPOwnerGroupID);
+        }
     }
 
     // Maintenance: if no watcher registered, do it
     if (dbFileWatcher == null) {
         //update cache
-        updateDbCache().then(function() {
-            //on succeed, start listener
-            dbFileWatcher = new Watcher(dbFileToWatch);
+        updateDbCache();
 
-            // on DB file change...
-            dbFileWatcher.on("all", async function(_) {
-                // update cached version
-                await updateDbCache();
+        //on succeed, start listener
+        dbFileWatcher = new Watcher(dbFileToWatch);
 
-                // signals to affected sockets that their password might have changed, and thus request again their password
-                shoutToAffectedClientsThatDatabaseUpdated(allSockets);
-            });
-        })
+        // on DB file change...
+        dbFileWatcher.on("all", async function(event, targetPath, targetPathNext) {
+            // update cached version
+            updateDbCache();
+
+            //
+            console.log("Users database changed !");
+
+            // signals to affected sockets that their password might have changed, and thus request again their password
+            shoutToAffectedClientsThatDatabaseUpdated(allSockets);
+        });
     }
 
     /** Middleware router */
     return (payload) => {
         switch(payload.id) {
             case "checkCredentials": {
-                const response = authenticateUser(freshSocket, payload);
+                const response = authenticateUser(freshSocket, payload, username);
                 freshSocket.send(JSON.stringify(response));
             }
             break;
