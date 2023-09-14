@@ -1,10 +1,26 @@
 import { readFile, existsSync, writeFileSync, chownSync } from 'fs';
 import Watcher from 'watcher';
 import { SoundVitrineDatabaseFolderPath, ExpectedShoutFileNameOnUserProfile } from '../_const.js';
+import { getBoundUserProfile } from './_all.js';
 import { WebSocket } from 'ws';
+import { createHash } from 'crypto';
 
-var dbFileToWatch = SoundVitrineDatabaseFolderPath + "/" + ExpectedShoutFileNameOnUserProfile;
+//
+//
+//
+
+const dbFileToWatch = SoundVitrineDatabaseFolderPath + "/" + ExpectedShoutFileNameOnUserProfile;
+
+/**
+ * can be null if unset
+ * @type {Watcher}}
+ */
 var dbFileWatcher = null;
+
+/**
+ * key is username
+ * @type {Object.<string, ?{ password: string | null }}>}
+ */
 var db = null;
 
 //
@@ -30,18 +46,23 @@ function produceAuthResult(accomp, hasNotFailed) {
 }
 
 /**
- * @param {import('http').default} request 
- * @param {{ 
- *  next: (msgType: ("credentialsChecked"), authResult: AuthResult, outputToSend: string) => void,
- * }} options
+ * @param {import("ws").WebSocket} socket socket authenticated with, might hold which username he is connected to 
+ * @param {string} path path on which the socket registered. might contain username in first segment 
+ * @param {id: ("checkCredentials"), r: string} auth_payload
+ * @returns {id: ("credentialsChecked"), r: string}
  */
-export function authenticateUser(path, auth_payload, answer) {
+export function authenticateUser(socket, auth_payload) {
     //
-    const username = ;
     const password = auth_payload.r;
 
     //
     const authResult = (() => {
+        //
+        const username = getBoundUserProfile(socket);
+        if (username == null) {
+            return produceAuthResult("cdm");
+        }
+
         //check if credentials are here
         if(username == null || password == null) return produceAuthResult("cdm");
         if(db == null) return produceAuthResult("eud");
@@ -53,20 +74,39 @@ export function authenticateUser(path, auth_payload, answer) {
         if(db[username]["password"] != password) return produceAuthResult("pmiss");
         
         // OK
+        socket.username = username;
+        socket.password_hash = createHash('md5').update(password).digest('hex');
+
+        console.log(username, ": Successfully logged !");
+
+        //
         return produceAuthResult(username, true);
     })();
     
+    if (!authResult.isLoginOk) {
+        console.log(username, ": Failed auth with code ", authResult.accomp);
+    }
+
     //
-    options.next("credentialsChecked", authResult.isLoginOk ? "ok" : authResult.accomp);
+    return  {
+        id: "credentialsChecked",
+        r: authResult.isLoginOk ? "ok" : authResult.accomp
+    };
 }
 
-//replace internal users db
+/** Refreshes local copy of database from expected file */
 function updateDbCache() {
     return new Promise(function(resolve, reject) {
         readFile(dbFileToWatch, 'utf8', function (err, contents) {
+            //
             if (err) return reject(err);
+
+            //
             try {
                 db = JSON.parse(contents);
+
+                console.log("Users database changed !");
+
                 return resolve();
             } catch(e) {
                 return reject(e);
@@ -76,18 +116,67 @@ function updateDbCache() {
 }
 
 /**
- * tell the client that he could reask for credentials validation
- * @param {WebSocket[]} allSockets all connected sockets 
+ * tell the appropriate clients that they might re-ask for credentials validation on password invalidation
+ * @param {WebSocket[]} allSockets all connected sockets, which might contain sockets that are 
  * @returns 
  */
-function shoutToClientsThatDatabaseUpdated(allSockets) {
-    return function() {
-        allSockets.emit("databaseUpdated"); 
+function shoutToAffectedClientsThatDatabaseUpdated(allSockets) {
+    //
+    const passHashesByUsers = Object.fromEntries(
+        Object.entries(db).map(([username, params]) => {
+            const foundPassword = params['password'];
+            return [
+                username, 
+                foundPassword != null 
+                    ? createHash('md5').update(foundPassword).digest('hex') 
+                    : null
+            ]
+        })
+    )
+
+    //
+    console.log("Trying to determine which users must re-authenticate");
+
+    //
+    for (const connectedSocket of allSockets) {
+        if (connectedSocket.readyState !== WebSocket.OPEN) continue;
+
+        // if socket not authenticated, no need to go forward
+        const socketUsername = connectedSocket['username'];
+        if(socketUsername == null) continue;
+
+        // if socket has the same password hash in database, no seed to go forward
+        const associatedPassHash = passHashesByUsers[socketUsername];
+        if (associatedPassHash == connectedSocket['password_hash']) continue;
+
+        //
+        // reset auth on socket 
+        //
+
+        console.log(socketUsername, ": please login again !");
+
+        socket.username = undefined;
+        socket.password_hash = undefined;
+
+        delete socket.username;
+        delete socket.password_hash;
+
+        //
+        // tells the socket that database changed
+        //
+
+        //
+        connectedSocket.send(JSON.stringify({
+            id: "databaseUpdated",
+            r: ""
+        }));
     }
 }
 
 /**
  * On each new socket connection, do this
+ * This Service is exclusively used by SoundBuddy to help the user understand if his credentials are OK,
+ * and along side with ping / pong capabilities of WebServices, tell if the server-side services are up
  * @param {WebSocket} freshSocket socket that just connected 
  * @param {WebSocket[]} allSockets all connected sockets 
  * @returns {WebSocketMiddleware}
@@ -105,35 +194,34 @@ export function setupOnSocketReady(freshSocket, allSockets) {
         updateDbCache().then(function() {
             //on succeed, start listener
             dbFileWatcher = new Watcher(dbFileToWatch);
-            dbFileWatcher.on("all", function(_) {
-                //update cache then shout
-                updateDbCache().then(shoutToClientsThatDatabaseUpdated(allSockets));
+
+            // on DB file change...
+            dbFileWatcher.on("all", async function(_) {
+                // update cached version
+                await updateDbCache();
+
+                // signals to affected sockets that their password might have changed, and thus request again their password
+                shoutToAffectedClientsThatDatabaseUpdated(allSockets);
             });
         })
     }
-
-        //define behavior on credentials check request
-        freshSocket.on("checkCredentials", function(username, password) {
-            checkIfLoginIsOk(username, password, function(results) {
-                freshSocket.send(JSON.stringify({id: "credentialsChecked", r: results}));
-            })
-        });
 
     /** Middleware router */
     return (payload) => {
         switch(payload.id) {
             case "checkCredentials": {
-                authenticateUser();
+                const response = authenticateUser(freshSocket, payload);
+                freshSocket.send(JSON.stringify(response));
             }
             break;
 
             default: {
                 return false;
             }
-
-            //
-            return true;
         }
+
+        //
+        return true;
     };
 
 

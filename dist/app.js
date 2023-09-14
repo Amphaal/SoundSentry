@@ -6,6 +6,10 @@ import { setupOnSocketReady as login_setupOnSocketReady } from './handlers/login
 import { setupOnSocketReady as shout_setupOnSocketReady } from './handlers/shout.js';
 import { SoundVitrineDatabaseFolderPath, ListeningPort } from './_const.js';
 
+//
+// Front Web Server setup
+//
+
 var env = process.env.NODE_ENV || 'development';
 
 if (env != 'production') {
@@ -30,6 +34,10 @@ if (env != 'production') {
   });
 }
 
+//
+// link WSS with HTTP / HTTPS server
+//
+
 const wss = new WebSocketServer({ noServer: true });
 
 //
@@ -37,7 +45,7 @@ function onSocketError() {
   console.warn("Something wrong happened with WebSockets service");
 }
 
-// link WSS with HTTP / HTTPS server
+//
 webServ.on('upgrade', function upgrade(request, socket, head) {
   //
   socket.on('error', onSocketError);
@@ -61,31 +69,17 @@ webServ.on('upgrade', function upgrade(request, socket, head) {
 
       for(const middleware of middlewares) {
         const handled = middleware(payloadAsJson);
-        if (handled) break;
+        if (handled) return;
       }
 
-      console.warn('Client trying to use unconfigured command');
+      console.warn('Client trying to use unconfigured command, with payload: ', payloadAsJson);
     });
   });
 });
 
-///
-/// APP
-///
-
-/*
-//on user connections for shouts updates
-var shoutNsp = io.of('/shout');
-shoutNsp.on('connection', function(socket) {
-  handleShoutSockets(socket, shoutNsp);
-});
-
-//on user connections for login checks
-var loginNsp = io.of('/login');
-loginNsp.on('connection', function(socket) {
-  handleLoginSockets(socket, loginNsp);
-});
-*/
+//
+// Igniting
+//
 
 webServ.listen(ListeningPort, '0.0.0.0');
 
