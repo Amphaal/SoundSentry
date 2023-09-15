@@ -89,9 +89,9 @@ function mayRegisterShoutFileWatcher(userToWatch, shoutFileToWatch) {
  * Essentially allow anonymous sockets from SoundVitrine, typically visitors of SoundVitrine, user profile
  * @param {WebSocket} freshSocket socket that just connected 
  * @param {WebSocket[]} allSockets all connected sockets 
- * @param {string} username 
+ * @param {string} userToWatch 
  */
-export function setupOnSocketReady(freshSocket, _, username) {
+export function setupOnSocketReady(freshSocket, _, userToWatch) {
     //
     const shoutFileToWatch = getAssociatedShoutFilePath(userToWatch);
     
