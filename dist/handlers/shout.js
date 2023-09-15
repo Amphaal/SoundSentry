@@ -34,16 +34,25 @@ function sendStoredShoutOfUserTo(pathToShoutFile, ofUser, sockets) {
         //
         if (contents == null) return;
 
+        let count = 0;
+
         //
         for(const socket of sockets) {
             // TODO: might need to cleanup closed sockets in rooms
             if (socket.readyState !== WebSocket.OPEN) continue;
+
+            count++;
 
             //
             socket.send(JSON.stringify({
                 id: "newShout",
                 r: contents
             }));
+        }
+
+        //
+        if (count > 0) {
+            console.log("New shout of '", ofUser ,"', sending notification to ", count, "listeners.");
         }
     }); 
 }
@@ -64,7 +73,7 @@ function mayCreateShoutFile(shoutFileToWatch) {
     try {
         chownSync(shoutFileToWatch, PHPOwnerUserID, PHPOwnerGroupID); //permit the php server to override it
     } catch {
-        console.warn("cannot update owner of file ", shoutFileToWatch, " to ", PHPOwnerUserID,":",PHPOwnerGroupID);
+        console.warn("cannot update owner of file ", shoutFileToWatch, " to ", PHPOwnerUserID,":", PHPOwnerGroupID);
     }
 }
 
@@ -110,4 +119,8 @@ export function setupOnSocketReady(freshSocket, _, userToWatch) {
     } else {
         userRooms[userToWatch] = [freshSocket];
     }
+
+    //
+    console.log("New WS client connected to shouts of '", userToWatch , "' !");
+
 }
