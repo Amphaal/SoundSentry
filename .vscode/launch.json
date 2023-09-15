@@ -12,6 +12,7 @@
             "skipFiles": [
                 "<node_internals>/**"
             ],
+            "console": "integratedTerminal",
             "env": {
                 "NODE_DEBUG": "engine,socket.io*",
                 "DATA_FOLDER": "${workspaceFolder}/_data"
