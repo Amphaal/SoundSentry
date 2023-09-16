@@ -12,7 +12,7 @@ var fileWatchers = {};
 
 /**
  * key is username
- * @type {Object.<string, WebSocket[]>}
+ * @type {Object.<string, Set<WebSocket>>}
  */
 var userRooms = {};
 
@@ -27,7 +27,7 @@ function getAssociatedShoutFilePath(ofUser) {
 /** 
  * @param {string} pathToShoutFile shout file that have to be emited
  * @param {string} ofUser username
- * @param {WebSocket[]} sockets sockets which will receive update notification
+ * @param {Set<WebSocket>} sockets sockets which will receive update notification
  */
 function sendStoredShoutOfUserTo(pathToShoutFile, ofUser, sockets) {
     readFile(pathToShoutFile, 'utf8', function (err, contents) {
@@ -87,9 +87,14 @@ function mayRegisterShoutFileWatcher(userToWatch, shoutFileToWatch) {
     //register watcher..
     var watcher = new Watcher(shoutFileToWatch);
     fileWatchers[userToWatch] = watcher;
+    console.log("Registered filewatch on [", shoutFileToWatch,']');
 
     //
     watcher.on("all", function(event, targetPath, targetPathNext) {
+        //
+        console.log("detected change on file [", targetPath ,"] (\"", event, "\")");
+
+        //
         sendStoredShoutOfUserTo(shoutFileToWatch, userToWatch, userRooms[userToWatch]);
     });
 }
@@ -97,10 +102,10 @@ function mayRegisterShoutFileWatcher(userToWatch, shoutFileToWatch) {
 /**
  * Essentially allow anonymous sockets from SoundVitrine, typically visitors of SoundVitrine, user profile
  * @param {WebSocket} freshSocket socket that just connected 
- * @param {WebSocket[]} allSockets all connected sockets 
+ * @param {Set<WebSocket>} allSockets all connected sockets 
  * @param {string} userToWatch 
  */
-export function setupOnSocketReady(freshSocket, _, userToWatch) {
+export function setupOnSocketReady(freshSocket, allSockets, userToWatch) {
     //
     const shoutFileToWatch = getAssociatedShoutFilePath(userToWatch);
     
@@ -111,13 +116,13 @@ export function setupOnSocketReady(freshSocket, _, userToWatch) {
     mayRegisterShoutFileWatcher(userToWatch, shoutFileToWatch);
 
     // initial shout fetch
-    sendStoredShoutOfUserTo(shoutFileToWatch, userToWatch, [freshSocket]); 
+    sendStoredShoutOfUserTo(shoutFileToWatch, userToWatch, new Set([freshSocket])); 
 
     // join room
     if(userRooms[userToWatch]) {
-        userRooms[userToWatch].push(freshSocket);
+        userRooms[userToWatch].add(freshSocket);
     } else {
-        userRooms[userToWatch] = [freshSocket];
+        userRooms[userToWatch] = new Set([freshSocket]);
     }
 
     //

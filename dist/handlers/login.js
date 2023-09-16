@@ -18,7 +18,7 @@ var dbFileWatcher = null;
 
 /**
  * key is username
- * @type {Object.<string, ?{ password: string | null }}>}
+ * @type {Object.<string, ?{ password: string | null }> | null }>}
  */
 var db = null;
 
@@ -34,10 +34,10 @@ var db = null;
 /**
  * macro function for quickly outputing result
  * @param {("cdm"|"eud"|"unfid"|"nopass"|"pmiss"|string)} accomp can be either, the username if sucessful, or a str ID corresponding to an error
- * @param {boolean | undefined } hasNotFailed Tells if authentication process was successful (matching passwords, etc.)
+ * @param { boolean | undefined } hasNotFailed Tells if authentication process was successful (matching passwords, etc.)
  * @return {AuthResult}
  */
-function produceAuthResult(accomp, hasNotFailed) {
+function produceAuthResult(accomp, hasNotFailed = undefined) {
     return {
         "isLoginOk": hasNotFailed ?? false,
         "accomp": accomp
@@ -46,9 +46,9 @@ function produceAuthResult(accomp, hasNotFailed) {
 
 /**
  * @param {import("ws").WebSocket} socket socket authenticated with, might hold which username he is connected to 
- * @param {string} path path on which the socket registered. might contain username in first segment 
- * @param {id: ("checkCredentials"), r: string} auth_payload
- * @returns {id: ("credentialsChecked"), r: string}
+ * @param {string} username
+ * @param {{id: ("checkCredentials"), r: string}} auth_payload
+ * @returns {{id: ("credentialsChecked"), r: string}}
  * @param {string} username 
  */
 export function authenticateUser(socket, auth_payload, username) {
@@ -99,16 +99,20 @@ export function authenticateUser(socket, auth_payload, username) {
 
 /** Refreshes local copy of database from expected file */
 function updateDbCache() {
+    //
     db = JSON.parse(
         readFileSync(dbFileToWatch, {
             encoding: 'utf-8'
         })
     );
+
+    //
+    console.log("Read", Object.entries(db).length, "users from database");
 }
 
 /**
  * tell the appropriate clients that they might re-ask for credentials validation on password invalidation
- * @param {WebSocket[]} allSockets all connected sockets, which might contain sockets that are 
+ * @param {Set<WebSocket>} allSockets all connected sockets, which might contain sockets that are 
  * @returns 
  */
 function shoutToAffectedClientsThatDatabaseUpdated(allSockets) {
@@ -127,6 +131,8 @@ function shoutToAffectedClientsThatDatabaseUpdated(allSockets) {
 
     //
     console.log("Trying to determine which users must re-authenticate");
+
+    let howMany = 0;
 
     //
     for (const connectedSocket of allSockets) {
@@ -156,12 +162,16 @@ function shoutToAffectedClientsThatDatabaseUpdated(allSockets) {
         // tells the socket that database changed
         //
 
+        howMany++;
+
         //
         connectedSocket.send(JSON.stringify({
             id: "databaseUpdated",
             r: ""
         }));
     }
+
+    console.log("Of", allSockets.size, "socket(s), signaled re-auth to", howMany, "socket(s)");
 }
 
 /**
@@ -169,9 +179,9 @@ function shoutToAffectedClientsThatDatabaseUpdated(allSockets) {
  * This Service is exclusively used by SoundBuddy to help the user understand if his credentials are OK,
  * and along side with ping / pong capabilities of WebServices, tell if the server-side services are up
  * @param {WebSocket} freshSocket socket that just connected 
- * @param {WebSocket[]} allSockets all connected sockets 
+ * @param {Set<WebSocket>} allSockets all connected sockets 
  * @param {string} username 
- * @returns {WebSocketMiddleware}
+ * @returns {import('./_all.js').WebSocketMiddleware}
  */
 export function setupOnSocketReady(freshSocket, allSockets, username) {
     // Maintenance: ensure recreation of database, even if deleted
@@ -190,10 +200,12 @@ export function setupOnSocketReady(freshSocket, allSockets, username) {
         updateDbCache();
 
         //on succeed, start listener
+        console.log("Registered filewatch on [", dbFileToWatch,']');
         dbFileWatcher = new Watcher(dbFileToWatch);
 
         // on DB file change...
         dbFileWatcher.on("all", async function(event, targetPath, targetPathNext) {
+            console.log("detected change on file [", targetPath ,"] (\"", event, "\")");
             // update cached version
             updateDbCache();
 
