@@ -1,8 +1,8 @@
-import { readFile, existsSync, writeFileSync, chownSync, readFileSync } from 'fs';
-import Watcher from 'watcher';
+import { existsSync, writeFileSync, chownSync, readFileSync } from 'fs';
 import { SoundVitrineDatabaseFolderPath, ExpectedUserDatabaseFileName, PHPOwnerUserID, PHPOwnerGroupID } from '../_const.js';
 import { WebSocket } from 'ws';
 import { createHash } from 'crypto';
+import { watchFile } from './_all.js';
 
 //
 //
@@ -12,7 +12,7 @@ const dbFileToWatch = SoundVitrineDatabaseFolderPath + "/" + ExpectedUserDatabas
 
 /**
  * can be null if unset
- * @type {Watcher}}
+ * @type {import('@parcel/watcher').AsyncSubscription}}
  */
 var dbFileWatcher = null;
 
@@ -80,7 +80,7 @@ export function authenticateUser(socket, auth_payload, username) {
     //
 
     if (!authResult.isLoginOk) {
-        console.log(username, ": Failed auth with code ", authResult.accomp);
+        console.log(username, ": Failed auth with code", authResult.accomp);
     } else {
         // OK
         socket.username = username;
@@ -183,7 +183,7 @@ function shoutToAffectedClientsThatDatabaseUpdated(allSockets) {
  * @param {string} username 
  * @returns {import('./_all.js').WebSocketMiddleware}
  */
-export function setupOnSocketReady(freshSocket, allSockets, username) {
+export async function setupOnSocketReady(freshSocket, allSockets, username) {
     // Maintenance: ensure recreation of database, even if deleted
     if(!existsSync(dbFileToWatch)) {
         writeFileSync(dbFileToWatch, "{}");
@@ -199,18 +199,13 @@ export function setupOnSocketReady(freshSocket, allSockets, username) {
         //update cache
         updateDbCache();
 
-        //on succeed, start listener
-        console.log("Registered filewatch on [", dbFileToWatch,']');
-        dbFileWatcher = new Watcher(dbFileToWatch);
-
-        // on DB file change...
-        dbFileWatcher.on("all", async function(event, targetPath, targetPathNext) {
-            console.log("detected change on file [", targetPath ,"] (\"", event, "\")");
+        // start listener
+        dbFileWatcher = await watchFile(dbFileToWatch, function onChange() {
             // update cached version
             updateDbCache();
 
             //
-            console.log("Users database changed !");
+            console.log("UsersDB changed !");
 
             // signals to affected sockets that their password might have changed, and thus request again their password
             shoutToAffectedClientsThatDatabaseUpdated(allSockets);

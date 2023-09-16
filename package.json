@@ -1,12 +1,12 @@
 {
     "name": "soundsentry",
     "type": "module",
-    "version": "0.1.0",
+    "version": "0.1.2",
     "private": true,
     "license": "UNLICENSED",
     "dependencies": {
       "ws": "^8.14.1",
-      "watcher": "^2.3.0",
+      "@parcel/watcher": "^2.3.0",
       "death": "^1.1.0"
     },
     "devDependencies": {

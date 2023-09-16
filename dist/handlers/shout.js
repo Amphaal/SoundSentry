@@ -1,12 +1,11 @@
 import { readFile, existsSync, writeFileSync, chownSync, mkdirSync } from 'fs';
-import Watcher from 'watcher';
 import { SoundVitrineDatabaseFolderPath, ExpectedShoutFileNameOnUserProfile, PHPOwnerUserID, PHPOwnerGroupID } from '../_const.js';
 import { WebSocket } from 'ws';
-import { dirname } from 'path';
+import { watchFile } from './_all.js';
 
 /**
  * key is username
- * @type {Object.<string, Watcher>}
+ * @type {Object.<string, import('@parcel/watcher').AsyncSubscription>}
  */
 var fileWatchers = {};
 
@@ -52,7 +51,7 @@ function sendStoredShoutOfUserTo(pathToShoutFile, ofUser, sockets) {
 
         //
         if (count > 0) {
-            console.log("New shout of '", ofUser ,"', sending notification to ", count, "listeners.");
+            console.log("New shout of'", ofUser ,"', sending notification to", count, "listeners.");
         }
     }); 
 }
@@ -80,21 +79,12 @@ function mayCreateShoutFile(shoutFileToWatch) {
 /** 
  * TODO: Might add a cleanup method to remove "not-used-anymore" watchers, with timestamp and expiry duration (smthing like 3 hours ?)
  */
-function mayRegisterShoutFileWatcher(userToWatch, shoutFileToWatch) {
+async function mayRegisterShoutFileWatcher(userToWatch, shoutFileToWatch) {
     // if watcher is already there, nothing to do
     if (fileWatchers[userToWatch]) return;
 
     //register watcher..
-    var watcher = new Watcher(shoutFileToWatch);
-    fileWatchers[userToWatch] = watcher;
-    console.log("Registered filewatch on [", shoutFileToWatch,']');
-
-    //
-    watcher.on("all", function(event, targetPath, targetPathNext) {
-        //
-        console.log("detected change on file [", targetPath ,"] (\"", event, "\")");
-
-        //
+    fileWatchers[userToWatch] = await watchFile(shoutFileToWatch, function onChange() {
         sendStoredShoutOfUserTo(shoutFileToWatch, userToWatch, userRooms[userToWatch]);
     });
 }
@@ -104,8 +94,9 @@ function mayRegisterShoutFileWatcher(userToWatch, shoutFileToWatch) {
  * @param {WebSocket} freshSocket socket that just connected 
  * @param {Set<WebSocket>} allSockets all connected sockets 
  * @param {string} userToWatch 
+ * @returns {import('./_all.js').WebSocketMiddleware}
  */
-export function setupOnSocketReady(freshSocket, allSockets, userToWatch) {
+export async function setupOnSocketReady(freshSocket, allSockets, userToWatch) {
     //
     const shoutFileToWatch = getAssociatedShoutFilePath(userToWatch);
     
@@ -113,7 +104,7 @@ export function setupOnSocketReady(freshSocket, allSockets, userToWatch) {
     mayCreateShoutFile(shoutFileToWatch);
 
     // 
-    mayRegisterShoutFileWatcher(userToWatch, shoutFileToWatch);
+    await mayRegisterShoutFileWatcher(userToWatch, shoutFileToWatch);
 
     // initial shout fetch
     sendStoredShoutOfUserTo(shoutFileToWatch, userToWatch, new Set([freshSocket])); 
@@ -128,4 +119,8 @@ export function setupOnSocketReady(freshSocket, allSockets, userToWatch) {
     //
     console.log("New WS client connected to shouts of '", userToWatch , "' !");
 
+    //
+    return (_) => {
+        return true;
+    };
 }

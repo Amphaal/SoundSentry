@@ -22,6 +22,7 @@ async function main () {
 
   //
   if (!existsSync(SoundVitrineDatabaseFolderPath)) {
+    console.log("Could not find data folder [", SoundVitrineDatabaseFolderPath, "], creating it.")
     mkdirSync(SoundVitrineDatabaseFolderPath, { recursive: true });
   }
 
@@ -99,13 +100,13 @@ async function main () {
       }
 
       //
-      ws.on('message', function message(data) {
+      ws.on('message', async function message(data) {
         //
         const payloadAsJson = JSON.parse(data);
 
         //
         for(const middleware of middlewares) {
-          const handled = middleware(payloadAsJson);
+          const handled = (await middleware)(payloadAsJson);
           if (handled) return;
         }
 
@@ -147,7 +148,7 @@ async function main () {
 
   webServ.listen(ListeningPort, '0.0.0.0');
 
-  console.log("Sucessfully ran on port " + ListeningPort + ". Awaiting connections...");
+  console.log("Sucessfully ran on port", ListeningPort  ,", awaiting connections...");
 }
 
 // We recommend this pattern to be able to use async/await everywhere
