@@ -6,19 +6,26 @@ import { setupOnSocketReady as login_setupOnSocketReady } from './handlers/login
 import { setupOnSocketReady as shout_setupOnSocketReady } from './handlers/shout.js';
 import { SoundVitrineDatabaseFolderPath, ListeningPort } from './_const.js';
 import ON_DEATH from 'death';
+import { resolve } from 'path';
 
 async function main () {
   //
   // Front Web Server setup
   //
 
+  var env = process.env.NODE_ENV || 'development';
+
+  // on debug build, wait a bit for attached debugger to catch up. At least 2 seconds
+  if (env != 'production') { 
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+  }
+
   //
   if (!existsSync(SoundVitrineDatabaseFolderPath)) {
     mkdirSync(SoundVitrineDatabaseFolderPath, { recursive: true });
   }
 
-  var env = process.env.NODE_ENV || 'development';
-
+  //
   if (env != 'production') {
     //
     console.log("==> NON-PRODUCTION ENV, running non-secure HTTP server <==");
