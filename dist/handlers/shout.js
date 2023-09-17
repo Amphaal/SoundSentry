@@ -2,6 +2,7 @@ import { readFile, existsSync, writeFileSync, chownSync, mkdirSync } from 'fs';
 import { SoundVitrineDatabaseFolderPath, ExpectedShoutFileNameOnUserProfile, RWUserID, RWGroupID } from '../_const.js';
 import { WebSocket } from 'ws';
 import { watchFile } from './_all.js';
+import { dirname } from 'path';
 
 /**
  * key is username
