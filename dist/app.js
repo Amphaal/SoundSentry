@@ -7,15 +7,43 @@ import { setupOnSocketReady as shout_setupOnSocketReady } from './handlers/shout
 import { SoundVitrineDatabaseFolderPath, ListeningPort } from './_const.js';
 import ON_DEATH from 'death';
 
+//
+function setupServer () {
+  //
+  const env = process.env.NODE_ENV;
+
+  if (env == 'production') {
+    //
+    const httpsDomainName = process.env.DOMAIN_NAME;
+
+    //
+    if (httpsDomainName != null) {
+        console.log("==> Production setup, trying to run HTTPS server on [", httpsDomainName, "] ... <==");
+        return httpsServer.createServer({
+          key: readFileSync(SoundVitrineDatabaseFolderPath + '/' + process.env.DOMAIN_NAME + '.key'),
+          cert: readFileSync(SoundVitrineDatabaseFolderPath + '/' + process.env.DOMAIN_NAME + '.crt')
+        });
+    } else {
+      console.error("==> [DOMAIN_NAME] env variable must be defined. It is used to determine certificate names from linked certbot SSL installation. Enforcing HTTP server. <==");
+    }
+  } else {
+    console.log("==> Non-production setup (NODE_ENV=", env, "), enforcing HTTP server <==");
+  }
+
+  //
+  console.log("==> CAREFUL, running non-secure HTTP server <==");
+  return httpServer.createServer();
+}
+
+
+//
 async function main () {
   //
   // Front Web Server setup
   //
 
-  const env = process.env.NODE_ENV;
-
   // on debug build, wait a bit for attached debugger to catch up. At least 2 seconds
-  if (env != 'production') { 
+  if (process.env.NODE_ENV != 'production') { 
     await new Promise((resolve) => setTimeout(resolve, 2000));
   }
 
@@ -25,28 +53,7 @@ async function main () {
     mkdirSync(SoundVitrineDatabaseFolderPath, { recursive: true });
   }
 
-  //
-  if (env != 'production') {
-    //
-    console.log("==> NON-PRODUCTION ENV (", env, "), running non-secure HTTP server <==");
-
-    //
-    var webServ = httpServer.createServer();
-  } else {
-    //
-    console.log("==> PRODUCTION ENV, trying to run HTTPS server ... <==");
-
-    //
-    if (process.env.DOMAIN_NAME == null) {
-      console.error("[DOMAIN_NAME] env variable must be defined. It is used to determine certificate names from linked certbot SSL installation.");
-    }
-
-    //
-    var webServ = httpsServer.createServer({
-      key: readFileSync(SoundVitrineDatabaseFolderPath + '/' + process.env.DOMAIN_NAME + '.key'),
-      cert: readFileSync(SoundVitrineDatabaseFolderPath + '/' + process.env.DOMAIN_NAME + '.crt')
-    });
-  }
+  const webServ = setupServer();
 
   //
   // link WSS with HTTP / HTTPS server
@@ -139,14 +146,15 @@ async function main () {
       console.log('[SoundSentry] Web server gracefully out. Bye-bye !')
     });
 
+    //
     webServ.close();
   }
 
   // if death-like signal intercepted at least once, try to close gracefully
   ON_DEATH(shutdownGracefully)
 
+  //
   webServ.listen(ListeningPort, '0.0.0.0');
-
   console.log("Sucessfully ran on port", ListeningPort  ,", awaiting connections...");
 }
 
