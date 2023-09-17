@@ -7,9 +7,17 @@ import { dirname, normalize } from 'path';
  */
 
 /**
- *  d
  * @typedef {(payload: WebSocketPayload) => boolean} WebSocketMiddleware
  */
+
+/**
+ * key is username
+ * @type {Object.<string, Date>}
+ */
+var debouncer = {};
+
+//
+const eventDebounceMs = 300;
 
 /**
  * 
@@ -30,6 +38,16 @@ export async function watchFile(fileToWatch, onChange) {
         for(const event of events) {
             //
             if (event.path != fileToWatch) continue;
+
+            // debounce ?
+            const latestPubDate = debouncer[event.path];
+            if (latestPubDate != null && ((Date.now() - latestPubDate.getTime()) < eventDebounceMs)) {
+                // events too close to eachother for this specific path, skip
+                continue;
+            }
+
+            //
+            debouncer[event.path] = new Date();
 
             //
             console.log("detected change on file [", event.path ,"] (\"", event.type, "\")");

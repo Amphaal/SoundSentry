@@ -13,7 +13,7 @@ async function main () {
   // Front Web Server setup
   //
 
-  var env = process.env.NODE_ENV || 'development';
+  const env = process.env.NODE_ENV ?? 'development';
 
   // on debug build, wait a bit for attached debugger to catch up. At least 2 seconds
   if (env != 'production') { 
@@ -29,7 +29,7 @@ async function main () {
   //
   if (env != 'production') {
     //
-    console.log("==> NON-PRODUCTION ENV, running non-secure HTTP server <==");
+    console.log("==> NON-PRODUCTION ENV (", env, "), running non-secure HTTP server <==");
 
     //
     var webServ = httpServer.createServer();
