@@ -4,7 +4,7 @@ import httpServer from 'http';
 import { WebSocketServer } from 'ws';
 import { setupOnSocketReady as login_setupOnSocketReady } from './handlers/login.js';
 import { setupOnSocketReady as shout_setupOnSocketReady } from './handlers/shout.js';
-import { SoundVitrineDatabaseFolderPath, ListeningPort } from './_const.js';
+import { SSLCertFolderPath, SoundVitrineDatabaseFolderPath, ListeningPort } from './_const.js';
 import ON_DEATH from 'death';
 
 //
@@ -20,8 +20,8 @@ function setupServer () {
     if (httpsDomainName != null) {
         console.log("==> Production setup, trying to run HTTPS server on [", httpsDomainName, "] ... <==");
         return httpsServer.createServer({
-          key: readFileSync(SoundVitrineDatabaseFolderPath + '/' + process.env.DOMAIN_NAME + '.key'),
-          cert: readFileSync(SoundVitrineDatabaseFolderPath + '/' + process.env.DOMAIN_NAME + '.crt')
+          key: readFileSync(SSLCertFolderPath + '/' + process.env.DOMAIN_NAME + '/privkey.pem'),
+          cert: readFileSync(SSLCertFolderPath + '/' + process.env.DOMAIN_NAME + '/fullchain.pem')
         });
     } else {
       console.error("==> [DOMAIN_NAME] env variable must be defined. It is used to determine certificate names from linked certbot SSL installation. Enforcing HTTP server. <==");
