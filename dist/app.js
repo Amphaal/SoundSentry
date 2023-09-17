@@ -1,40 +1,10 @@
-import { existsSync, mkdirSync, readFileSync } from 'fs';
-import httpsServer from 'https';
+import { existsSync, mkdirSync } from 'fs';
 import httpServer from 'http';
 import { WebSocketServer } from 'ws';
 import { setupOnSocketReady as login_setupOnSocketReady } from './handlers/login.js';
 import { setupOnSocketReady as shout_setupOnSocketReady } from './handlers/shout.js';
-import { SSLCertFolderPath, SoundVitrineDatabaseFolderPath, ListeningPort } from './_const.js';
+import { SoundVitrineDatabaseFolderPath, ListeningPort } from './_const.js';
 import ON_DEATH from 'death';
-
-//
-function setupServer () {
-  //
-  const env = process.env.NODE_ENV;
-
-  if (env == 'production') {
-    //
-    const httpsDomainName = process.env.DOMAIN_NAME;
-
-    //
-    if (httpsDomainName != null) {
-        console.log("==> Production setup, trying to run HTTPS server on [", httpsDomainName, "] ... <==");
-        return httpsServer.createServer({
-          key: readFileSync(SSLCertFolderPath + '/' + process.env.DOMAIN_NAME + '/privkey.pem'),
-          cert: readFileSync(SSLCertFolderPath + '/' + process.env.DOMAIN_NAME + '/fullchain.pem')
-        });
-    } else {
-      console.error("==> [DOMAIN_NAME] env variable must be defined. It is used to determine certificate names from linked certbot SSL installation. Enforcing HTTP server. <==");
-    }
-  } else {
-    console.log("==> Non-production setup (NODE_ENV=", env, "), enforcing HTTP server <==");
-  }
-
-  //
-  console.log("==> CAREFUL, running non-secure HTTP server <==");
-  return httpServer.createServer();
-}
-
 
 //
 async function main () {
@@ -53,7 +23,10 @@ async function main () {
     mkdirSync(SoundVitrineDatabaseFolderPath, { recursive: true });
   }
 
-  const webServ = setupServer();
+  // using HTTP server by default; any HTTPS should be handled by proxy, 
+  // because certbot cert are access-restricted to root users, and we need this instance
+  // to have rights to update files accordingly as classic FTP user
+  const webServ = httpServer.createServer();
 
   //
   // link WSS with HTTP / HTTPS server
