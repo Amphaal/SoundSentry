@@ -181,7 +181,7 @@ function shoutToAffectedClientsThatDatabaseUpdated(allSockets) {
  * @param {WebSocket} freshSocket socket that just connected 
  * @param {Set<WebSocket>} allSockets all connected sockets 
  * @param {string} username 
- * @returns {import('./_all.js').WebSocketMiddleware}
+ * @returns {Promise<import('./_all.js').WebSocketMiddleware>}
  */
 export async function setupOnSocketReady(freshSocket, allSockets, username) {
     // Maintenance: ensure recreation of database, even if deleted

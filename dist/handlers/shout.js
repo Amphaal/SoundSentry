@@ -95,7 +95,7 @@ async function mayRegisterShoutFileWatcher(userToWatch, shoutFileToWatch) {
  * @param {WebSocket} freshSocket socket that just connected 
  * @param {Set<WebSocket>} allSockets all connected sockets 
  * @param {string} userToWatch 
- * @returns {import('./_all.js').WebSocketMiddleware}
+ * @returns {Promise<import('./_all.js').WebSocketMiddleware>}
  */
 export async function setupOnSocketReady(freshSocket, allSockets, userToWatch) {
     //
