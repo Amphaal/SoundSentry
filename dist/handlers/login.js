@@ -1,5 +1,5 @@
 import { existsSync, writeFileSync, chownSync, readFileSync } from 'fs';
-import { SoundVitrineDatabaseFolderPath, ExpectedUserDatabaseFileName, PHPOwnerUserID, PHPOwnerGroupID } from '../_const.js';
+import { SoundVitrineDatabaseFolderPath, ExpectedUserDatabaseFileName, RWUserID, RWGroupID } from '../_const.js';
 import { WebSocket } from 'ws';
 import { createHash } from 'crypto';
 import { watchFile } from './_all.js';
@@ -188,9 +188,9 @@ export async function setupOnSocketReady(freshSocket, allSockets, username) {
     if(!existsSync(dbFileToWatch)) {
         writeFileSync(dbFileToWatch, "{}");
         try {
-            chownSync(dbFileToWatch, PHPOwnerUserID, PHPOwnerGroupID); // permit the php server to override it
+            chownSync(dbFileToWatch, RWUserID, RWGroupID); // permit the php server to override it
         } catch {
-            console.warn("cannot update owner of file ", dbFileToWatch, " to ", PHPOwnerUserID,":",PHPOwnerGroupID);
+            console.warn("cannot update owner of file ", dbFileToWatch, " to ", RWUserID,":",RWGroupID);
         }
     }
 

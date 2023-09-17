@@ -1,5 +1,5 @@
 import { readFile, existsSync, writeFileSync, chownSync, mkdirSync } from 'fs';
-import { SoundVitrineDatabaseFolderPath, ExpectedShoutFileNameOnUserProfile, PHPOwnerUserID, PHPOwnerGroupID } from '../_const.js';
+import { SoundVitrineDatabaseFolderPath, ExpectedShoutFileNameOnUserProfile, RWUserID, RWGroupID } from '../_const.js';
 import { WebSocket } from 'ws';
 import { watchFile } from './_all.js';
 
@@ -70,9 +70,9 @@ function mayCreateShoutFile(shoutFileToWatch) {
     writeFileSync(shoutFileToWatch, "{}");
 
     try {
-        chownSync(shoutFileToWatch, PHPOwnerUserID, PHPOwnerGroupID); //permit the php server to override it
+        chownSync(shoutFileToWatch, RWUserID, RWGroupID); //permit the php server to override it
     } catch {
-        console.warn("cannot update owner of file ", shoutFileToWatch, " to ", PHPOwnerUserID,":", PHPOwnerGroupID);
+        console.warn("cannot update owner of file ", shoutFileToWatch, " to ", RWUserID,":", RWGroupID);
     }
 }
 
