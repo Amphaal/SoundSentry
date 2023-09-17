@@ -37,7 +37,7 @@ async function main () {
     console.log("==> PRODUCTION ENV, trying to run HTTPS server ... <==");
 
     //
-    if (process.env.DOMAIN_NAME) {
+    if (process.env.DOMAIN_NAME == null) {
       console.error("[DOMAIN_NAME] env variable must be defined. It is used to determine certificate names from linked certbot SSL installation.");
     }
 
