@@ -10,7 +10,7 @@ FROM node:lts-slim AS base
   # tells we run transpiler by default
   ENTRYPOINT ["node"]
   # pre-expose default service port
-  EXPOSE 3000
+  EXPOSE 80
 
 # ---- Dependencies ----
 FROM base AS dependencies
