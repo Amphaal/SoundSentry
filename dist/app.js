@@ -6,14 +6,13 @@ import { setupOnSocketReady as login_setupOnSocketReady } from './handlers/login
 import { setupOnSocketReady as shout_setupOnSocketReady } from './handlers/shout.js';
 import { SoundVitrineDatabaseFolderPath, ListeningPort } from './_const.js';
 import ON_DEATH from 'death';
-import { resolve } from 'path';
 
 async function main () {
   //
   // Front Web Server setup
   //
 
-  const env = process.env.NODE_ENV ?? 'development';
+  const env = process.env.NODE_ENV;
 
   // on debug build, wait a bit for attached debugger to catch up. At least 2 seconds
   if (env != 'production') { 
