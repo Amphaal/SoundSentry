@@ -45,12 +45,17 @@ async function main () {
     socket.on('error', onSocketError);
 
     // url must be provided
-    if (request.url == null) {
+    let req_url = request.url;
+    if (req_url == null) {
       socket.destroy();
       return;
     }
 
-    const [username, verb] = request.url.split('/').filter(Boolean);
+    if (req_url.startsWith('/sentry')) {
+      req_url = req_url.replace('/sentry', '');
+    }
+
+    const [username, verb] = req_url.split('/').filter(Boolean);
     
     //get user to watch
     if (username == null || verb == null) {
