@@ -121,7 +121,18 @@ export async function setupOnSocketReady(freshSocket, allSockets, userToWatch) {
     console.log("New WS client connected to shouts of '", userToWatch , "' !");
 
     //
-    return (_) => {
+    return (payload) => {
+        switch(payload.id) {
+            case "ping": {
+                freshSocket.send(JSON.stringify({
+                    id: 'pong',
+                    r: ''
+                }));
+            }
+            break;
+        }
+
+        // 
         return true;
     };
 }
