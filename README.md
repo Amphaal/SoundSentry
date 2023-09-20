@@ -1,2 +1,2 @@
 # SoundSentry
-Bridges your currently iTunes listened tune with WTNZ
+Bridges your iTunes's currently listened tune with SoundVitrine
